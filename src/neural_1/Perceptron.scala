@@ -15,10 +15,12 @@ class Perceptron(var weights: (Double, Double), α: Double, activationFunction: 
   def result(tested: (Int, Int)) = activationFunction(excitation(tested._1, tested._2))
 
   def recalculateWeights(tested: (Int, Int)): Unit = {
-    val δ = expectedResult(tested._1, tested._2) - result(tested)
+    val δ = error(tested)
     weights = (weights._1 + α * δ * tested._1, weights._2 + α * δ * tested._2)
   }
-
+  def error(tested: (Int, Int)):Double = {
+    expectedResult(tested._1, tested._2) - result(tested)
+  }
   def iteration() = {
     val shuffledIds = util.Random.shuffle[Int, IndexedSeq](toTest.indices)
     shuffledIds.foreach(id => recalculateWeights(toTest(id)))
@@ -47,6 +49,12 @@ class Perceptron(var weights: (Double, Double), α: Double, activationFunction: 
     activationFunction(excitation(x1, x2))
   }
 }
+class Adaline(weights: (Double, Double), α: Double, activationFunction: (Double) => Int, expectedResult: (Int, Int) => Int, toTest: Seq[(Int, Int)])
+  extends Perceptron(weights, α, activationFunction, expectedResult, toTest){
+  override def error(tested: (Int, Int)) = {
+    expectedResult(tested._1, tested._2) - excitation(tested._1,tested._2)
+  }
+}
 
 object Runner extends App {
   val options = readOptions()
@@ -54,25 +62,48 @@ object Runner extends App {
   val bias = options.getOrElse("bias", 0.1)
   val actFun = options.getOrElse("activation_function", 0)
   val learnedFun = options.getOrElse("learned_function", 0)
-  val p = new Perceptron(
-    weights = (Random.nextDouble() * range * 2 - 1, Random.nextDouble() * range * 2 - 1),
-    α = options.getOrElse("learning_factor", 0.1),
-    activationFunction = v => if (v < bias) {
-      if (actFun == 0) 0 else -1
-    } else 1,
-    expectedResult =
-      if (learnedFun == 0)
-        (v1, v2) => if (v1 == 1 && v2 == 1) 1
-        else {
-          if (actFun == 0) 0 else -1  //unipolar or bipolar
-        }
-      else
-        (v1, v2) => if (v1 == 1 || v2 == 1) 1
-        else {
-          if (actFun == 0) 0 else -1
-        },
-    toTest = Seq((0, 0), (0, 1), (1, 0), (1, 1))
-  )
+  val ifAdaline = options.getOrElse("if_adaline", 0)
+  val p = if(ifAdaline==0) {
+      new Perceptron(
+      weights = (Random.nextDouble() * range * 2 - 1, Random.nextDouble() * range * 2 - 1),
+      α = options.getOrElse("learning_factor", 0.1),
+      activationFunction = v => if (v < bias) {
+        if (actFun == 0) 0 else -1
+      } else 1,
+      expectedResult =
+        if (learnedFun == 0)
+          (v1, v2) => if (v1 == 1 && v2 == 1) 1
+          else {
+            if (actFun == 0) 0 else -1 //unipolar or bipolar
+          }
+        else
+          (v1, v2) => if (v1 == 1 || v2 == 1) 1
+          else {
+            if (actFun == 0) 0 else -1
+          },
+      toTest = Seq((0, 0), (0, 1), (1, 0), (1, 1))
+    )
+  } else {
+    new Adaline(
+      weights = (Random.nextDouble() * range * 2 - 1, Random.nextDouble() * range * 2 - 1),
+      α = options.getOrElse("learning_factor", 0.1),
+      activationFunction = v => if (v < bias) {
+        if (actFun == 0) 0 else -1
+      } else 1,
+      expectedResult =
+        if (learnedFun == 0)
+          (v1, v2) => if (v1 == 1 && v2 == 1) 1
+          else {
+            if (actFun == 0) 0 else -1 //unipolar or bipolar
+          }
+        else
+          (v1, v2) => if (v1 == 1 || v2 == 1) 1
+          else {
+            if (actFun == 0) 0 else -1
+          },
+      toTest = Seq((0, 0), (0, 1), (1, 0), (1, 1))
+    )
+  }
   p.learn()
   var input = ""
   while (input != "stop") {
