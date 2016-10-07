@@ -3,4 +3,4 @@ learning_factor 0.1
 activation_function 0 //0 for unipolar, 1 for bipolar
 bias 0.5
 learned_function 1 //0 for AND, 1 for OR
-if_adaline 0 //1 for Adaline error calculation
+if_adaline 1 //1 for Adaline error calculation
