@@ -54,27 +54,28 @@ class Perceptron(var weights: (Double, Double), α: Double, activationFunction: 
 object Runner extends App {
   val options = readOptions()
   val range = options.getOrElse("weights_range", 0.5)
-  val bias = options.getOrElse("bias", 0.1)
+  val step = -options.getOrElse("bias", -0.5)
   val actFun = options.getOrElse("activation_function", 0)
   val learnedFun = options.getOrElse("learned_function", 0)
   val ifAdaline = options.getOrElse("if_adaline", 0)
+  val neg = if (actFun == 0) 0 else -1
   val p =
       new Perceptron(
-      weights = (Random.nextDouble() * range * 2 - 1, Random.nextDouble() * range * 2 - 1),
-      α = options.getOrElse("learning_factor", 0.1),
-      activationFunction = v => if (v < bias) {
-        if (actFun == 0) 0 else -1
+      weights = (Random.nextDouble() * range * 2 - range, Random.nextDouble() * range * 2 - range),
+      α = options.getOrElse("learning_factor", 0.01),
+      activationFunction = v => if (v < step) {
+        neg
       } else 1,
       expectedResult =
         if (learnedFun == 0)
           (v1, v2) => if (v1 == 1 && v2 == 1) 1
           else {
-            if (actFun == 0) 0 else -1 //unipolar or bipolar
+            neg //unipolar or bipolar
           }
         else
           (v1, v2) => if (v1 == 1 || v2 == 1) 1
           else {
-            if (actFun == 0) 0 else -1
+            neg
           },
       toTest = Seq((0, 0), (0, 1), (1, 0), (1, 1)),
         adalineMode = !(ifAdaline==0)
