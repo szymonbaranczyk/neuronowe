@@ -5,11 +5,11 @@ import java.util.{Locale, Scanner}
 
 import scala.io.StdIn
 import scala.util.Random
-
+import breeze.plot._
 /**
   * Created by SBARANCZ on 2016-10-05.
   */
-class Perceptron(var weights: (Double, Double), α: Double, activationFunction: (Double) => Int, expectedResult: (Int, Int) => Int, toTest: Seq[(Int, Int)], adalineMode:Boolean) {
+class Perceptron(var weights: (Double, Double), α: Double, activationFunction: (Double) => Int, expectedResult: (Int, Int) => Int, toTest: Seq[(Int, Int)], adalineMode: Boolean, adalineErrorLimit: Double) {
   def excitation(v1: Double, v2: Double) = v1 * weights._1 + v2 * weights._2
 
   def result(tested: (Int, Int)) = activationFunction(excitation(tested._1, tested._2))
@@ -18,30 +18,45 @@ class Perceptron(var weights: (Double, Double), α: Double, activationFunction: 
     val δ = error(tested)
     weights = (weights._1 + α * δ * tested._1, weights._2 + α * δ * tested._2)
   }
-  def error(tested: (Int, Int)):Double = {
-    if(adalineMode) expectedResult(tested._1, tested._2) - excitation(tested._1, tested._2)
+
+  def error(tested: (Int, Int)): Double = {
+    if (adalineMode) expectedResult(tested._1, tested._2) - excitation(tested._1, tested._2)
     else expectedResult(tested._1, tested._2) - result(tested)
   }
+
   def iteration() = {
     val shuffledIds = util.Random.shuffle[Int, IndexedSeq](toTest.indices)
     shuffledIds.foreach(id => recalculateWeights(toTest(id)))
     println(weights)
     var returned = true
-    shuffledIds.foreach(id => {
-      if (result(toTest(id)) != expectedResult(toTest(id)._1, toTest(id)._2)) {
+    if (!adalineMode) {
+      shuffledIds.foreach(id => {
+
+        if (result(toTest(id)) != expectedResult(toTest(id)._1, toTest(id)._2)) {
+          returned = false
+        }
+        println(toTest(id) + " " + result(toTest(id)))
+      })
+    } else {
+      var errorSum = 0.0d
+      shuffledIds.foreach(id => {
+        errorSum += Math.pow(error(toTest(id)),2)
+      })
+      errorSum = errorSum / toTest.length
+      if (errorSum > adalineErrorLimit) {
         returned = false
       }
-      println(toTest(id) + " " + result(toTest(id)))
-    })
+      println(errorSum)
+    }
     returned
   }
 
   def learn() = {
     var stop = false
-    var i=0
+    var i = 0
     while (!stop) {
       stop = iteration()
-      i=i+1
+      i = i + 1
     }
     println(s"$i iterations were required")
   }
@@ -58,9 +73,10 @@ object Runner extends App {
   val actFun = options.getOrElse("activation_function", 0)
   val learnedFun = options.getOrElse("learned_function", 0)
   val ifAdaline = options.getOrElse("if_adaline", 0)
+  val adalineErrorLimit = options.getOrElse("adaline_error_limit", 0.1)
   val neg = if (actFun == 0) 0 else -1
   val p =
-      new Perceptron(
+    new Perceptron(
       weights = (Random.nextDouble() * range * 2 - range, Random.nextDouble() * range * 2 - range),
       α = options.getOrElse("learning_factor", 0.01),
       activationFunction = v => if (v < step) {
@@ -78,7 +94,8 @@ object Runner extends App {
             neg
           },
       toTest = Seq((0, 0), (0, 1), (1, 0), (1, 1)),
-        adalineMode = !(ifAdaline==0)
+      adalineMode = !(ifAdaline == 0),
+      adalineErrorLimit = adalineErrorLimit
     )
   p.learn()
   var input = ""
