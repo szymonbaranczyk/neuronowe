@@ -5,23 +5,22 @@ import java.util.{Locale, Scanner}
 
 import scala.io.StdIn
 import scala.util.Random
-import breeze.plot._
 /**
   * Created by SBARANCZ on 2016-10-05.
   */
-class Perceptron(var weights: (Double, Double), α: Double, activationFunction: (Double) => Int, expectedResult: (Int, Int) => Int, toTest: Seq[(Int, Int)], adalineMode: Boolean, adalineErrorLimit: Double) {
-  def excitation(v1: Double, v2: Double) = v1 * weights._1 + v2 * weights._2
+class Perceptron(var weights: Seq[Double], α: Double, activationFunction: (Double) => Int, expectedResult: Seq[Double] => Double, toTest: Seq[Seq[Double]], adalineMode: Boolean, adalineErrorLimit: Double) {
+  def excitation(values: Seq[Double]) = values.zipWithIndex.map{case (v,i) => v*weights(i)}.sum
 
-  def result(tested: (Int, Int)) = activationFunction(excitation(tested._1, tested._2))
+  def result(tested: Seq[Double]) = activationFunction(excitation(tested))
 
-  def recalculateWeights(tested: (Int, Int)): Unit = {
+  def recalculateWeights(tested: Seq[Double]): Unit = {
     val δ = error(tested)
-    weights = (weights._1 + α * δ * tested._1, weights._2 + α * δ * tested._2)
+    weights=weights.zipWithIndex.map{ case (w,i) => w + α * δ * tested(i)}
   }
 
-  def error(tested: (Int, Int)): Double = {
-    if (adalineMode) expectedResult(tested._1, tested._2) - excitation(tested._1, tested._2)
-    else expectedResult(tested._1, tested._2) - result(tested)
+  def error(tested: Seq[Double]): Double = {
+    if (adalineMode) expectedResult(tested) - excitation(tested)
+    else expectedResult(tested) - result(tested)
   }
 
   def iteration() = {
@@ -30,15 +29,14 @@ class Perceptron(var weights: (Double, Double), α: Double, activationFunction: 
     println(weights)
     var returned = true
     if (!adalineMode) {
-      shuffledIds.foreach(id => {
-
-        if (result(toTest(id)) != expectedResult(toTest(id)._1, toTest(id)._2)) {
+      toTest.foreach(tested => {
+        if (result(tested) != expectedResult(tested)) {
           returned = false
         }
-        println(toTest(id) + " " + result(toTest(id)))
+        println(tested + " " + result(tested))
       })
     } else {
-      var errorSum = 0.0d
+      var errorSum= toTest.foldLeft(0.0d)((sum,tested) => sum+Math.pow(error(tested),2))
       shuffledIds.foreach(id => {
         errorSum += Math.pow(error(toTest(id)),2)
       })
@@ -61,8 +59,8 @@ class Perceptron(var weights: (Double, Double), α: Double, activationFunction: 
     println(s"$i iterations were required")
   }
 
-  def answer(x1: Double, x2: Double) = {
-    activationFunction(excitation(x1, x2))
+  def answer(seq: Seq[Double]) = {
+    activationFunction(excitation(seq))
   }
 }
 
@@ -77,37 +75,38 @@ object Runner extends App {
   val neg = if (actFun == 0) 0 else -1
   val p =
     new Perceptron(
-      weights = (Random.nextDouble() * range * 2 - range, Random.nextDouble() * range * 2 - range),
+      weights = Seq(Random.nextDouble() * range * 2 - range, Random.nextDouble() * range * 2 - range),
       α = options.getOrElse("learning_factor", 0.01),
       activationFunction = v => if (v < step) {
         neg
       } else 1,
       expectedResult =
         if (learnedFun == 0)
-          (v1, v2) => if (v1 == 1 && v2 == 1) 1
+          seq => if (seq(0)==1 && seq(1)==1) 1
           else {
             neg //unipolar or bipolar
           }
         else
-          (v1, v2) => if (v1 == 1 || v2 == 1) 1
+          seq => if (seq(0)==1 || seq(1)==1) 1
           else {
             neg
           },
-      toTest = Seq((0, 0), (0, 1), (1, 0), (1, 1)),
+      toTest = Seq(Seq(0, 0), Seq(0, 1), Seq(1, 0), Seq(1, 1)),
       adalineMode = !(ifAdaline == 0),
       adalineErrorLimit = adalineErrorLimit
     )
   p.learn()
+  Plotting.plotPerceptron((p.weights(0),p.weights(1)),step)
   var input = ""
   while (input != "stop") {
     println("enter two values, seperated by whitespace, which neuron should be tested against")
     input = StdIn.readLine()
     val s = input.split(" ")
-    println(p.answer(s(0).toDouble, s(1).toDouble))
+    println(p.answer(Seq(s(0).toDouble, s(1).toDouble)))
   }
 
   def readOptions() = {
-    val fileReader = new FileReader("params.txt")
+    val fileReader = new FileReader(getClass.getResource("/params.txt").getPath)
     val sc = new Scanner(fileReader).useLocale(Locale.US)
     var options = Map.empty[String, Double]
     while (sc.hasNext) {

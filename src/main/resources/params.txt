@@ -1,5 +1,5 @@
 weights_range 0.5
-learning_factor 0.01
+learning_factor 0.1
 activation_function 0 //0 for unipolar, 1 for bipolar
 bias -0.5
 learned_function 1 //0 for AND, 1 for OR
