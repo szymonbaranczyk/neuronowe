@@ -36,7 +36,7 @@ class Perceptron(var weights: Seq[Double], α: Double, activationFunction: (Doub
         println(tested + " " + result(tested))
       })
     } else {
-      var errorSum= toTest.foldLeft(0.0d)((sum,tested) => sum+Math.pow(error(tested),2))
+      var errorSum= 0.0d//toTest.foldLeft(0.0d)((sum,tested) => sum+Math.pow(error(tested),2))
       shuffledIds.foreach(id => {
         errorSum += Math.pow(error(toTest(id)),2)
       })
