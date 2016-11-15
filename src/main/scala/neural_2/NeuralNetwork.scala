@@ -115,9 +115,7 @@ object Test extends App{
   val nn = new NeuralNetwork(70, hiddenLayerSize, 10, range, learningFactor, momentum)
   val file = new File(getClass.getResource("/result.txt").getPath)
   val sc = new Scanner(new FileReader(file))
-  val rand = new Random()
   val trainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
-  val shuffledTrainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
   var i = 0
   while (sc.hasNext && i < trainingSetSize) {
     val line = sc.nextLine()
@@ -129,6 +127,11 @@ object Test extends App{
     i += 1
   }
   sc.close()
+  val rand = new Random()
+  val shuffledTrainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
+  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
+  shuffledIds.foreach(id => shuffledTrainSet += trainSet(id))
+  var testList: List[(DenseMatrix[Double], DenseMatrix[Double])] = List()
   var j = 0
   while (j < (trainingSetSize / 50)) {
     val random_index = rand.nextInt(shuffledTrainSet.length)
@@ -136,12 +139,9 @@ object Test extends App{
     shuffledTrainSet.remove(random_index)
     j += 1
   }
-  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
   val start = System.currentTimeMillis()
-  shuffledIds.foreach(id => shuffledTrainSet += trainSet(id))
   nn.train(shuffledTrainSet, test(testList = testList))
   val end = System.currentTimeMillis()
-  var testList: List[(DenseMatrix[Double], DenseMatrix[Double])] = List()
   var count = 0
   testList.foreach(t => {
 
