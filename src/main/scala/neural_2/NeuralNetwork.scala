@@ -42,6 +42,10 @@ class NeuralNetwork(inputLength:Int, hiddenLength:Int, outputLength:Int, range:D
     0.5 * sum(breeze.numerics.pow(expectedOutput-out,2.0))
   }
 
+  def runOnce(input: DenseMatrix[Double]): DenseMatrix[Double] = {
+    output.runOnce(hidden.runOnce(input))
+  }
+
   def randomMatrix(range:Double,x:Int,y:Int):DenseMatrix[Double] = {
     val dist = breeze.stats.distributions.Uniform(-range,range)
     DenseMatrix.rand(x,y,dist)
@@ -87,10 +91,6 @@ class NeuralNetwork(inputLength:Int, hiddenLength:Int, outputLength:Int, range:D
     (costW2, costW1)
   }
 
-  def runOnce(input: DenseMatrix[Double]): DenseMatrix[Double] = {
-    output.runOnce(hidden.runOnce(input))
-  }
-
   def sigmoidPrime(x: Double): Double = {
     sigmoid(x) * (1 - sigmoid(x))
   }
@@ -110,7 +110,8 @@ object Test extends App{
   val file = new File(getClass.getResource("/result.txt").getPath)
   val sc = new Scanner(new FileReader(file))
   val rand = new Random()
-  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
+  val trainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
+  val shuffledTrainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
   while (sc.hasNext && i < trainingSetSize) {
     val line = sc.nextLine()
     val tokens = line.split(" ")
@@ -120,19 +121,21 @@ object Test extends App{
     trainSet += ((img,outMatrix))
     i += 1
   }
-  val shuffledTrainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
-  var trainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
-  var i = 0
-  while (j < trainingSetSize / 50) {
+  sc.close()
+  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
+  val start = System.currentTimeMillis()
+  while (j < (trainingSetSize / 50)) {
     val random_index = rand.nextInt(trainSet.length)
     testList = testList :+ trainSet(random_index)
     trainSet.remove(random_index)
-    i+=1
+    j += 1
   }
-  var j = 0
-  var testList: List[(DenseMatrix[Double], DenseMatrix[Double])] = List()
+  val end = System.currentTimeMillis()
+  var i = 0
   shuffledIds.foreach(id => shuffledTrainSet += trainSet(id))
+  var testList: List[(DenseMatrix[Double], DenseMatrix[Double])] = List()
   nn.train(shuffledTrainSet, test(testList = testList))
+  var j = 0
   var count = 0
   testList.foreach(t => {
 
@@ -143,7 +146,8 @@ object Test extends App{
     }
     println(ans + ", expected: " + exp)
   })
-  println("errors: " + count)
+  println("errors: " + count + "/" + (trainingSetSize / 50) + "=" + (trainingSetSize.toDouble / 50.0) / count.toDouble)
+  println("time elapsed: " + (end - start))
 
   def test(testList:Seq[(DenseMatrix[Double], DenseMatrix[Double])])(nn:NeuralNetwork):Boolean = {
     var cost=0.0
