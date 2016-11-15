@@ -1,9 +1,8 @@
 package neural_2
 import java.io.{File, FileReader}
-import java.util.Scanner
+import java.util.{Locale, Scanner}
 
 import breeze.linalg._
-import breeze.numerics._
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
@@ -35,10 +34,41 @@ costW1 2x3 (same as weight matrix for hiddenLayer)
 class NeuralNetwork(inputLength:Int, hiddenLength:Int, outputLength:Int, range:Double, learning:Double){
   var hidden = new NeuralLayer(randomMatrix(range,inputLength,hiddenLength))
   var output = new NeuralLayer(randomMatrix(range,hiddenLength,outputLength))
-  def runOnce(input:DenseMatrix[Double]): DenseMatrix[Double] = {
-    output.runOnce( hidden.runOnce(input) )
+  var smallestError = 10000.0
+  var noChangeTicks = 0
+
+  def costFunction(input:DenseMatrix[Double],expectedOutput:DenseMatrix[Double]) = {
+    val out = runOnce(input)
+    0.5 * sum(breeze.numerics.pow(expectedOutput-out,2.0))
   }
-  def costFunctionPrime(input:DenseMatrix[Double],expectedOutput:DenseMatrix[Double]) = {
+
+  def randomMatrix(range:Double,x:Int,y:Int):DenseMatrix[Double] = {
+    val dist = breeze.stats.distributions.Uniform(-range,range)
+    DenseMatrix.rand(x,y,dist)
+  }
+
+  def train(examples : Seq[(DenseMatrix[Double],DenseMatrix[Double])], endCheck: NeuralNetwork => Boolean ):Boolean = {
+    var stop=false
+    var i=0
+    while(!stop) {
+      examples.foreach(mat => {
+        val pair = costFunctionPrime(mat._1, mat._2)
+          hidden.weights = hidden.weights - pair._2 * learning
+          output.weights = output.weights - pair._1 * learning
+      })
+      i+=1
+      stop = endCheck(this)
+    }
+    stop
+  }
+
+  def trainStep(matWithIndex:(DenseMatrix[Double],DenseMatrix[Double])) = {
+    val pair = costFunctionPrime(matWithIndex._1, matWithIndex._2)
+    hidden.weights = hidden.weights - pair._2 * learning
+    output.weights = output.weights - pair._1 * learning
+  }
+
+  def costFunctionPrime(input: DenseMatrix[Double], expectedOutput: DenseMatrix[Double]) = {
     val out = runOnce(input)
     // output.z.map(d => sigmoidPrime(d)) is f'(z) - rate of how much changing 'z' will affect the output.
     // (-(expectedOutput - out)) is a value by which output should be changed - it is also derivative of used error function
@@ -54,83 +84,90 @@ class NeuralNetwork(inputLength:Int, hiddenLength:Int, outputLength:Int, range:D
     // (deltaOut * output.weights.t) is a value by which output of hidden layer should be changed
     val deltaHidden = (deltaOut * output.weights.t) :* hidden.z.map(d => sigmoidPrime(d))
     val costW1 = input.t * deltaHidden
-    (costW2,costW1)
+    (costW2, costW1)
   }
-  def costFunction(input:DenseMatrix[Double],expectedOutput:DenseMatrix[Double]) = {
-    val out = runOnce(input)
-    0.5 * sum(breeze.numerics.pow(expectedOutput-out,2.0))
+
+  def runOnce(input: DenseMatrix[Double]): DenseMatrix[Double] = {
+    output.runOnce(hidden.runOnce(input))
   }
-  def randomMatrix(range:Double,x:Int,y:Int):DenseMatrix[Double] = {
-    val dist = breeze.stats.distributions.Uniform(-range,range)
-    DenseMatrix.rand(x,y,dist)
+
+  def sigmoidPrime(x: Double): Double = {
+    sigmoid(x) * (1 - sigmoid(x))
   }
+
   def sigmoid(x: Double): Double = {
     1.0 / (1.0 + math.pow(math.E, -x))
   }
-  def sigmoidPrime(x:Double): Double ={
-    sigmoid(x) * (1 - sigmoid(x))
-  }
-  def train(examples : Seq[(DenseMatrix[Double],DenseMatrix[Double])], endCheck: NeuralNetwork => Boolean ):Boolean = {
-    var stop=false
-    var i=0
-    while(!stop) {
-      examples.foreach(matWithIndex => {
-          val pair = costFunctionPrime(matWithIndex._1, matWithIndex._2)
-          hidden.weights = hidden.weights - pair._2 * learning
-          output.weights = output.weights - pair._1 * learning
-      })
-      i+=1
-      stop = endCheck(this)
-    }
-    stop
-  }
-  def trainStep(matWithIndex:(DenseMatrix[Double],DenseMatrix[Double])) = {
-    val pair = costFunctionPrime(matWithIndex._1, matWithIndex._2)
-    hidden.weights = hidden.weights - pair._2 * learning
-    output.weights = output.weights - pair._1 * learning
-  }
 }
 object Test extends App{
-  val nn = new NeuralNetwork(70,70,10,0.5,0.1)
+  val options = readOptions()
+  val range = options.getOrElse("weights_range", 0.5)
+  val hiddenLayerSize = options.getOrElse("hidden_layer_size", 70.0).toInt
+  val momentum = options.getOrElse("momentum", 0)
+  val trainingSetSize = options.getOrElse("training_set_size", 19000.0).toInt
+  val learningFactor = options.getOrElse("learning_factor", 0.1)
+  val nn = new NeuralNetwork(70, hiddenLayerSize, 10, range, learningFactor)
   val file = new File(getClass.getResource("/result.txt").getPath)
   val sc = new Scanner(new FileReader(file))
-  var trainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
-  while(sc.hasNext){
+  val rand = new Random()
+  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
+  while (sc.hasNext && i < trainingSetSize) {
     val line = sc.nextLine()
     val tokens = line.split(" ")
     val out = tokens.head.toInt
     val outMatrix = DenseMatrix((List.fill(out)(0.0) :+ 1.0) ::: List.fill(9-out)(0.0))
     val img = DenseMatrix(tokens.tail.map( z => z.toDouble))
     trainSet += ((img,outMatrix))
+    i += 1
   }
-  val rand = new Random()
-  var i=0
-  var testList:List[(DenseMatrix[Double], DenseMatrix[Double])] = List()
-  while(i<60) {
+  val shuffledTrainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
+  var trainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
+  var i = 0
+  while (j < trainingSetSize / 50) {
     val random_index = rand.nextInt(trainSet.length)
     testList = testList :+ trainSet(random_index)
     trainSet.remove(random_index)
     i+=1
   }
-  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
-  val shuffledTrainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
+  var j = 0
+  var testList: List[(DenseMatrix[Double], DenseMatrix[Double])] = List()
   shuffledIds.foreach(id => shuffledTrainSet += trainSet(id))
-  nn.train(trainSet, test(testList = testList))
+  nn.train(shuffledTrainSet, test(testList = testList))
+  var count = 0
+  testList.foreach(t => {
 
+    val ans = nn.runOnce(t._1).toArray.zipWithIndex.maxBy(_._1)._2
+    val exp = t._2.toArray.zipWithIndex.maxBy(_._1)._2
+    if (ans != exp) {
+      count += 1
+    }
+    println(ans + ", expected: " + exp)
+  })
+  println("errors: " + count)
 
-
-  var smallestError = 10000.0
-  var noChangeTicks =0
   def test(testList:Seq[(DenseMatrix[Double], DenseMatrix[Double])])(nn:NeuralNetwork):Boolean = {
     var cost=0.0
     testList.foreach(tuple => cost += nn.costFunction(tuple._1,tuple._2))
-    if(smallestError > cost) {
-      smallestError = cost
-      noChangeTicks=0
+    if (nn.smallestError > cost) {
+      nn.smallestError = cost
+      nn.noChangeTicks = 0
     }else{
-      noChangeTicks+=1
+      nn.noChangeTicks += 1
     }
     println(cost)
-    noChangeTicks > 10
+    nn.noChangeTicks > 10
+  }
+
+  def readOptions() = {
+    val fileReader = new FileReader(getClass.getResource("/params.txt").getPath)
+    val sc = new Scanner(fileReader).useLocale(Locale.US)
+    var options = Map.empty[String, Double]
+    while (sc.hasNext) {
+      val key = sc.next()
+      val value = sc.nextDouble()
+      options = options + (key -> value)
+      sc.nextLine()
+    }
+    options
   }
 }
