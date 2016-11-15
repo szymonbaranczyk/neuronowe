@@ -118,6 +118,7 @@ object Test extends App{
   val rand = new Random()
   val trainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
   val shuffledTrainSet: ListBuffer[(DenseMatrix[Double], DenseMatrix[Double])] = ListBuffer()
+  var i = 0
   while (sc.hasNext && i < trainingSetSize) {
     val line = sc.nextLine()
     val tokens = line.split(" ")
@@ -128,19 +129,18 @@ object Test extends App{
     i += 1
   }
   sc.close()
-  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
-  val start = System.currentTimeMillis()
-  shuffledIds.foreach(id => shuffledTrainSet += trainSet(id))
-  val end = System.currentTimeMillis()
-  var i = 0
+  var j = 0
   while (j < (trainingSetSize / 50)) {
     val random_index = rand.nextInt(shuffledTrainSet.length)
     testList = testList :+ shuffledTrainSet(random_index)
     shuffledTrainSet.remove(random_index)
     j += 1
   }
-  var j = 0
+  val shuffledIds = util.Random.shuffle[Int, IndexedSeq](trainSet.indices)
+  val start = System.currentTimeMillis()
+  shuffledIds.foreach(id => shuffledTrainSet += trainSet(id))
   nn.train(shuffledTrainSet, test(testList = testList))
+  val end = System.currentTimeMillis()
   var testList: List[(DenseMatrix[Double], DenseMatrix[Double])] = List()
   var count = 0
   testList.foreach(t => {
