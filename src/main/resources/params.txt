@@ -1,10 +1,11 @@
-weights_range 0.5   //also second task
-learning_factor 0.1 //also second task
+weights_range 0.1   //also second task
+learning_factor 0.2 //also second task
 activation_function 0 //0 for unipolar, 1 for bipolar
 bias -0.5
 learned_function 1 //0 for AND, 1 for OR
 if_adaline 1 //1 for Adaline error calculation
 adaline_error_limit 0.1 //now exclusive second task settings
-hidden_layer_size 70
-momentum 0
-training_set_size 19000
+hidden_layer_size 100
+momentum 0.2
+training_set_size 17000
+dropout 0.5

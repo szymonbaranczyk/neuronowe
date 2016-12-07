@@ -1,7 +1,6 @@
 package neural_1
-import breeze.linalg._
-import breeze.plot._
-import breeze.plot.Figure
+
+import breeze.plot.{Figure, _}
 /**
   * Created by SBARANCZ on 2016-10-17.
   */
@@ -14,7 +13,7 @@ object Plotting{
     plt.xlim(-1,2)
     plt.ylim(-1,2)
     plt += plot(seqX,seqY)
-    fig.refresh()
+
   }
 
   def plotPerceptron(weights:(Double,Double),step:Double) = {
