@@ -42,18 +42,17 @@ object BAWImgReader extends App {
     }
   }
 
-  def saveImage(seq: Seq[Double]) = {
-    val size = 28
+  def saveImage(seq: Seq[Double], fileName: String, x: Int, y: Int) = {
     var k = 0
-    val img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
-    for (i <- 0 until size) {
-      for (j <- 0 until size) {
+    val img = new BufferedImage(x, y, BufferedImage.TYPE_INT_ARGB)
+    for (i <- 0 until y) {
+      for (j <- 0 until x) {
         val p = (seq(k) * 256).toInt
         k += 1
-        img.setRGB(i, j, (0 << 24) | (p << 16) | (p << 8) | p)
+        img.setRGB(j, i, (255 << 24) | (p << 16) | (p << 8) | p)
       }
     }
-    val f = new File("C:\\Output.png")
+    val f = new File(s"C:\\Users\\sbarancz\\Documents\\${fileName}")
     ImageIO.write(img, "png", f)
   }
 }

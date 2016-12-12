@@ -43,7 +43,7 @@ costW2 3x4 (same as weight matrix for outputLayer)
 deltaHidden 3x1
 costW1 2x3 (same as weight matrix for hiddenLayer)
  */
-class NeuralNetwork(inputLength: Int, hiddenLength: Int, outputLength: Int, range: Double, learning: Double, momentum: Double, dropout: Double) {
+class NeuralNetwork(inputLength: Int, hiddenLength: Int, outputLength: Int, range: Double, learning: Double, momentum: Double, dropout: Double, regularization: Double) {
   val hidInit = randomMatrix(range, inputLength, hiddenLength)
   val outInit = randomMatrix(range, hiddenLength, outputLength)
   var hidden = new NeuralLayer(hidInit, hidInit.copy)
@@ -69,17 +69,20 @@ class NeuralNetwork(inputLength: Int, hiddenLength: Int, outputLength: Int, rang
     val r = new Random
     while (!stop) {
       shuffle(examples).foreach(mat => {
-        if (r.nextDouble() > dropout) {
           val pair = costFunctionPrime(mat._1, mat._2)
-          hidden.weights = hidden.weights - pair._2 * learning
-          output.weights = output.weights - pair._1 * learning
+        pair._1.map(d => if (r.nextDouble() > dropout) {
+          d
+        } else {
+          0
+        })
+        hidden.weights = (1 - learning * regularization) * hidden.weights - pair._2 * learning
+        output.weights = (1 - learning * regularization) * output.weights - pair._1 * learning
           lastPair match {
             case Some(p) => hidden.weights = hidden.weights - (p._2 * learning * momentum)
               output.weights = output.weights - (p._1 * learning * momentum)
             case None =>
           }
           lastPair = Some(pair)
-        }
       })
       i += 1
       stop = endCheck(this)
@@ -159,7 +162,8 @@ object Test extends App {
   val momentum = options.getOrElse("momentum", 0.0)
   val learningFactor = options.getOrElse("learning_factor", 0.1)
   val dropout = options.getOrElse("dropout", 0.5)
-  val nn = new NeuralNetwork(784, hiddenLayerSize, 784, range, learningFactor, momentum, dropout)
+  val regularization = options.getOrElse("regularization", 0.0)
+  val nn = new NeuralNetwork(784, hiddenLayerSize, 784, range, learningFactor, momentum, dropout, regularization)
   val trainingSetSize = 5000
   val trainSet = skip(Mnist.trainDataset.imageReader.imagesAsVectors.map(v => v.map(d => d)).map(v => (v.asDenseMatrix, v.asDenseMatrix)), 100)
   val testList = skip(Mnist.testDataset.imageReader.imagesAsVectors.map(v => v.map(d => d)).map(v => (v.asDenseMatrix, v.asDenseMatrix)), 100)
@@ -184,8 +188,8 @@ object Test extends App {
       input = StdIn.readLine()
       val file = new File(input)
       val result: List[Double] = BAWImgReader.getImageList(ImageIO.read(file))
-
-      BAWImgReader.saveImage(nn.runBest(DenseMatrix(result)).toArray.toList)
+      BAWImgReader.saveImage(nn.hidden.runBest(DenseMatrix(result)).toArray.toList, "hidden.png", 10, 10)
+      BAWImgReader.saveImage(nn.runBest(DenseMatrix(result)).toArray.toList, "output.png", 28, 28)
     }
   }
 
