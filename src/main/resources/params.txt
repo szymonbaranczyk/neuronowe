@@ -5,8 +5,8 @@ bias -0.5
 learned_function 1 //0 for AND, 1 for OR
 if_adaline 1 //1 for Adaline error calculation
 adaline_error_limit 0.1 //now exclusive second task settings
-hidden_layer_size 784
+hidden_layer_size 100
 momentum 0.3
 training_set_size 17000
-dropout 0.0
-regularization 0.0
+dropout 0.5
+regularization 0

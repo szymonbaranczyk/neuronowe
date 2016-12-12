@@ -179,6 +179,7 @@ object Test extends App {
   println("errors: " + count + "/" + testList.size + "=" + ((testList.size.toDouble - count.toDouble) / testList.size.toDouble))
   println("time elapsed: " + (end - start))
   persistNetwork(nn)
+  visualizeWeights(nn.hidden, 28, 28)
   runNetwork(nn)
 
   def runNetwork(nn: NeuralNetwork) = {
@@ -249,5 +250,11 @@ object Test extends App {
 
   def skip[A](l: Seq[A], n: Int) = {
     l.zipWithIndex.collect { case (e, i) if ((i + 1) % n) == 0 => e }
+  }
+
+  def visualizeWeights(nl: NeuralLayer, x: Int, y: Int) = {
+    for (i <- 0 until nl.bestWeights.cols) {
+      BAWImgReader.saveImage(nl.bestWeights(::, i).toScalaVector, s"\\hidden\\${i}.png", x, y)
+    }
   }
 }

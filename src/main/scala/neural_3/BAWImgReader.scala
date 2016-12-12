@@ -53,6 +53,7 @@ object BAWImgReader extends App {
       }
     }
     val f = new File(s"C:\\Users\\sbarancz\\Documents\\${fileName}")
+    f.createNewFile()
     ImageIO.write(img, "png", f)
   }
 }
